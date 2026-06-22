@@ -1,0 +1,5 @@
+package github.com/sjqtentacles/sml-git
+
+require {
+  github.com/sjqtentacles/sml-deflate
+}

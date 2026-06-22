@@ -1,0 +1,17 @@
+(* MLB for the sml-git library.
+ *
+ * Layout B: our own sources live in src/; the single dependency sml-deflate is
+ * vendored under lib/ and loaded first. sml-deflate's sources.mlb already
+ * pulls in the vendored sml-codec (Sha1 / Base16 / Crc32) and exposes the
+ * string-based Zlib facade (deflateZlib / inflateZlib), so loading it alone
+ * gives git everything it needs: zlib for loose/pack objects and SHA-1 for
+ * object ids.
+ *
+ * Brought in WITHOUT a `local` wrapper so consumers (tests, examples) can use
+ * Zlib / Sha1 / Base16 alongside Git. *)
+$(SML_LIB)/basis/basis.mlb
+
+../lib/github.com/sjqtentacles/sml-deflate/sources.mlb
+
+git.sig
+git.sml

@@ -1,0 +1,15 @@
+(* Test executable basis: the git library (which pulls in the vendored
+ * sml-deflate + sml-codec) plus the harness, fixtures support, suites and
+ * runner. *)
+$(SML_LIB)/basis/basis.mlb
+
+../src/git.mlb
+
+harness.sml
+support.sml
+test_object.sml
+test_pack.sml
+test_index.sml
+test_ref.sml
+entry.sml
+main.sml
