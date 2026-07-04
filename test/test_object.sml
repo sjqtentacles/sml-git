@@ -106,5 +106,32 @@ struct
     ; H.section "object: malformed input is rejected"
     ; H.checkRaises "decodeLoose garbage" (fn () => Git.decodeLoose "not a git object")
     ; H.checkRaises "parseTree truncated" (fn () => Git.parseTree "100644 big.txt")
+
+    (* An object header size is decimal ASCII with no fixed width, so a corrupt
+       or hostile loose object can carry a size well past 2^31. MLton's default
+       `int` is 32-bit, so `Int.fromString` on such a numeral raises `Overflow`
+       -- an *uncontrolled* crash that also diverges from Poly/ML (63-bit int,
+       which would instead reach the size-mismatch check). The parser must
+       reject an out-of-range size as a clean `Git` error (never `Overflow`),
+       identically on both compilers. We assert the specific `Git` constructor,
+       not merely "some exception", so an `Overflow` crash still fails. *)
+    ; H.section "object: oversized size header is rejected cleanly"
+    ; let
+        fun raisesGit thunk =
+          (ignore (thunk ()); false)
+          handle Git.Git _ => true
+               | _ => false   (* Overflow or anything else -> not a clean reject *)
+        val loose10 = Zlib.deflateZlib {level = 6} "blob 9999999999\000hello\n"
+        val loose20 = Zlib.deflateZlib {level = 6} "blob 99999999999999999999\000hello\n"
+      in
+        H.check "oversized 10-digit size -> Git (not Overflow)"
+          (raisesGit (fn () => Git.decodeLoose loose10));
+        H.check "oversized 20-digit size -> Git (not Overflow)"
+          (raisesGit (fn () => Git.decodeLoose loose20));
+        (* a well-formed small object with a size that MATCHES its payload still
+           decodes cleanly -- the fix must not regress the happy path *)
+        H.checkEq "well-formed small object still decodes"
+          (Git.Blob "hi", Git.decodeLoose (Zlib.deflateZlib {level = 6} "blob 2\000hi"))
+      end
     )
 end

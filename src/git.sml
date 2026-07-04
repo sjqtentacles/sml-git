@@ -8,7 +8,11 @@
    Everything is byte-string in / byte-string out and deterministic. Integers
    stay small (MLton's default Int is 32-bit), so the binary readers avoid any
    value >= 2^31; 64-bit packfile offsets (packs > 2 GiB) are explicitly
-   rejected rather than silently overflowing. *)
+   rejected rather than silently overflowing. The one size field parsed from
+   untrusted decimal ASCII (a loose object's header size) is parsed through
+   arbitrary-precision IntInf and range-checked against the fixed 32-bit bound,
+   so an oversized size is a clean `Git` rejection rather than an Overflow
+   crash that would diverge between compilers. *)
 
 structure Git :> GIT =
 struct
@@ -195,9 +199,22 @@ struct
       val nul = findChar (framed, #"\000", sp + 1)
       val () = if nul < 0 then raise Git "object: missing header terminator" else ()
       val sizeStr = String.substring (framed, sp + 1, nul - (sp + 1))
-      val size = case Int.fromString sizeStr of
-                     SOME k => k
-                   | NONE => raise Git "object: malformed size"
+      (* The header size is unbounded decimal ASCII, so a corrupt or hostile
+         object can carry a value past 2^31. It is only ever compared to
+         `String.size p` (a machine `int`, since no in-memory string can be
+         larger), so it stays a bounded `int` -- but we must not let
+         `Int.fromString` raise `Overflow` on MLton's 32-bit `int` (a crash that
+         also diverges from Poly/ML's 63-bit `int`). Parse through
+         arbitrary-precision `IntInf` and range-check against the FIXED 32-bit
+         signed range, rejecting anything out of range as a clean `Git` error --
+         identically on both compilers. *)
+      val size =
+        case IntInf.fromString sizeStr of
+            NONE => raise Git "object: malformed size"
+          | SOME k =>
+              if k >= 0 andalso k <= 2147483647
+              then IntInf.toInt k
+              else raise Git "object: size out of range"
       val p = String.substring (framed, nul + 1, String.size framed - (nul + 1))
       val () = if String.size p <> size then raise Git "object: size mismatch" else ()
     in parseObject {typ = typ, payload = p} end
