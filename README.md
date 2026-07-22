@@ -1,5 +1,7 @@
 # sml-git
 
+[![CI](https://github.com/sjqtentacles/sml-git/actions/workflows/ci.yml/badge.svg)](https://github.com/sjqtentacles/sml-git/actions/workflows/ci.yml)
+
 Pure Standard ML [git](https://git-scm.com/) plumbing — the byte-level
 **object, packfile, index and ref formats** that every git implementation
 shares, with **no networking**. Loose objects (`blob`/`tree`/`commit`/`tag`),
